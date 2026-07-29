@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS launchd agent template for watch_runner.py.
+
+  This keeps the cross-platform watcher (watch_runner.py) running in the
+  background and automatically restarts it on login/crash, without needing
+  OpenClaw. Replace every <<PLACEHOLDER>> below with your actual paths, then:
+
+    cp com.sttx-watch.plist.template ~/Library/LaunchAgents/com.sttx-watch.plist
+    # edit the copy to fill in the placeholders
+    launchctl load ~/Library/LaunchAgents/com.sttx-watch.plist
+
+  To stop it:
+    launchctl unload ~/Library/LaunchAgents/com.sttx-watch.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.sttx-watch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string><<PATH_TO_PYTHON>></string>
+        <!-- e.g. /opt/homebrew/Caskroom/miniconda/base/envs/spatial-transcriptomics/bin/python -->
+        <string><<PATH_TO_PROJECT>>/watch_runner.py</string>
+        <!-- e.g. /Users/yourname/Spatial Transcriptomics Analysis/watch_runner.py -->
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string><<PATH_TO_PROJECT>></string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string><<PATH_TO_PROJECT>>/logs/watch_runner.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string><<PATH_TO_PROJECT>>/logs/watch_runner.stderr.log</string>
+</dict>
+</plist>

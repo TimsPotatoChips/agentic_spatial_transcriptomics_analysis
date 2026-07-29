@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spatial-transcriptomics-analysis"
+version = "1.0.0"
+description = "Enhanced autonomous spatial transcriptomics analysis pipeline for Stereo-seq data"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [
+  { name = "Maiqi Zhang" },
+]
+dependencies = [
+  "h5py==3.14.0",
+  "llvmlite==0.43.0",
+  "matplotlib==3.9.4",
+  "numba==0.60.0",
+  "numpy==2.0.2",
+  "openai==2.43.0",
+  "pandas==2.3.3",
+  "pynndescent==0.6.0",
+  "scikit-learn==1.6.1",
+  "scipy==1.13.1",
+  "seaborn==0.13.2",
+  "umap-learn==0.5.12",
+]
+
+[project.urls]
+Repository = "https://github.com/TimsPotatoChips/openclaw_spatial_transcriptomics_analysis"
+
+[tool.setuptools]
+py-modules = [
+  "baseline",
+  "ensemble_clustering",
+  "annotator",
+  "ai_agent",
+  "ovarian_knowledge_base",
+]

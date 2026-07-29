@@ -1,53 +1,92 @@
-# Deploying the Spatial Transcriptomics Pipeline in OpenClaw
+# Deploying the Spatial Transcriptomics Pipeline for Automatic, Ongoing Analysis
 
-This guide explains how to deploy Maiqi Zhang's spatial transcriptomics analysis pipeline inside OpenClaw for automated, ongoing analysis with new datasets.
+This guide explains how to set up automated, ongoing analysis with new datasets for Maiqi Zhang's spatial transcriptomics analysis pipeline: drop a new `.gef` file into the project folder, and the full pipeline runs on its own.
 
-## What This Does
+There are two ways to get this behavior, and this repo actually contains **two separate watcher scripts** — here's why, and which one you want.
 
-OpenClaw acts as an AI agent that automatically runs the full analysis pipeline when a new dataset is dropped into the project folder. It sends an email notification when the run finishes, and can also be triggered on demand from a browser dashboard or iMessage.
+### Which watcher should I use?
 
-The pipeline runs three stages in sequence:
+If you're not sure, use `watch_runner.py`. It's the simpler, self-contained option and works everywhere.
+
+| | `watch_runner.py` | `watch_runner.sh` |
+|---|---|---|
+| **Platforms** | macOS, Linux, Windows | macOS only |
+| **Extra install** | None (just the `watchdog` package, already in `environment.yml`) | OpenClaw (Node.js + `npm install -g openclaw`) |
+| **How it's triggered** | Runs itself continuously in the foreground/background — `python watch_runner.py`, watches for file changes directly | Triggered by macOS `launchd` (installed by `openclaw onboard --install-daemon`); calls `run_pipeline.sh` to actually run the stages |
+| **On-demand triggering** | Not built in — you'd trigger a run by dropping a file, same as always | Browser chat dashboard (`openclaw dashboard`) and iMessage (text your Mac: "Run the full pipeline") |
+| **Notifications** | Desktop notification (macOS only) + email (any OS, via `notify.py`) | Desktop notification + email, same `notify.py` |
+
+Both scripts do the same underlying job (detect a new `.gef` file, run the three pipeline stages, avoid duplicate/overlapping runs, notify when done) — `watch_runner.sh` exists because it's what OpenClaw's automatic daemon is built on, giving you the dashboard/iMessage extras in exchange for macOS + Node.js + OpenClaw's setup. `watch_runner.py` exists so the core "drop and walk away" behavior doesn't require any of that. You don't need both — pick one based on whether you want the OpenClaw extras.
+
+- **Option A: `watch_runner.py`** (recommended) — a cross-platform Python watcher included in this repo. Works on macOS, Linux, and Windows with no extra tools beyond what's already in `environment.yml`.
+- **Option B: OpenClaw** (macOS only) — an external AI agent CLI that additionally provides a browser dashboard and iMessage triggering on top of the same automatic behavior. Requires Node.js and its own onboarding; only available on macOS (it installs `watch_runner.sh` as a `launchd` daemon under the hood).
+
+Both run the same three pipeline stages in sequence:
 
 1. **Ensemble Clustering** — groups cells by gene expression similarity using K-means, Hierarchical, and GMM combined (~30-60 min)
-2. **Biological Annotation** — identifies cell types using 374 markers across 8 ovarian cell types (~20 min)
+2. **Biological Annotation** — identifies cell types across 8 ovarian cell types (~20 min)
 3. **AI Agent Discovery** — autonomously generates and tests biological hypotheses (~10-20 min)
 
-## Prerequisites
+## Option A: `watch_runner.py` (Recommended, Cross-Platform)
+
+### Prerequisites
+
+- Python 3.9+ with the project's dependencies installed — see the main [README](README.md) for the recommended conda setup via `environment.yml` (this includes the `watchdog` package `watch_runner.py` needs)
+- Optional: an OpenAI API key (for the AI agent's LLM-based hypothesis generation — falls back to rule-based hypotheses without one)
+- Optional: a Gmail account (for email notifications — desktop notifications and log files work regardless)
+
+### Running It
+
+```bash
+conda activate spatial-transcriptomics   # or your venv
+python watch_runner.py
+```
+
+Leave it running. Drop any `.gef` file into the project folder, and the pipeline starts automatically within seconds. You'll see progress logged to the terminal and to `logs/`, and get a notification (desktop + email, if `.env` is configured — see below) when it finishes.
+
+The watcher is anti-loop safe — it will not re-run if the same file (by path + size) is dropped twice, or if a run is already in progress. Press Ctrl+C to stop it.
+
+**Test it without waiting for a real run:** `python watch_runner.py --once` processes any unprocessed `.gef` file already sitting in the folder once, then exits — useful for verifying the setup works.
+
+### Keeping It Running in the Background
+
+`python watch_runner.py` needs to stay running to catch new files. Templates for running it as a background service are in `deploy/`:
+
+- **macOS:** `deploy/com.sttx-watch.plist.template` — a `launchd` agent (same mechanism OpenClaw's daemon uses, but pointed at `watch_runner.py` directly, no OpenClaw/Node.js required). Copy it to `~/Library/LaunchAgents/`, fill in the placeholder paths, then `launchctl load`.
+- **Linux:** `deploy/sttx-watch.service.template` — a `systemd` user service. Copy it to `~/.config/systemd/user/`, fill in the placeholder paths, then `systemctl --user enable --now`.
+- **Windows:** no template provided (systemd/launchd don't exist there) — either leave a terminal open running `python watch_runner.py`, or set up a Task Scheduler task that runs `python watch_runner.py` at logon with "Repeat task" disabled and "If the task is already running" set to "Do not start a new instance" (the script's own file-locking still applies as a second safety net).
+
+### Environment Variables
+
+Optional — create a `.env` file in the project folder for email notifications:
+
+```bash
+GMAIL_USER=your@gmail.com
+NOTIFY_EMAIL_TO=your@gmail.com
+GMAIL_APP_PASSWORD=your-app-password
+OPENAI_API_KEY=your-key   # optional, enables LLM-based hypothesis generation
+```
+
+To get a Gmail App Password: Google Account → Security → 2-Step Verification → App Passwords.
+
+## Option B: OpenClaw (macOS Only, Adds Dashboard + iMessage)
+
+If you're on macOS and want the extra on-demand triggering channels (browser dashboard, iMessage) on top of the same automatic behavior, OpenClaw is an alternative to `watch_runner.py`.
+
+### Prerequisites
 
 - macOS (the auto-run watcher uses macOS launchd)
-- Python 3.8+
+- Python 3.9+ (see the main [README](README.md) for the recommended conda setup via `environment.yml`)
 - Node.js 22+
 - An Anthropic or OpenAI API key
 - A Gmail account (for email notifications)
 
 > **Note:** This pipeline was tested using OpenClaw with **Claude (Anthropic)** as the AI provider, not with a local model runner such as Ollama. We recommend using an Anthropic API key with OpenClaw for the most reliable results.
 
-## Installation
-
-### 1. Clone the Repository
-
-```bash
-git clone <repo-url>
-cd "Spatial Transcriptomics Analysis"
-```
-
-### 2. Install Python Dependencies
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install numpy pandas scipy scikit-learn h5py matplotlib seaborn umap-learn openai
-```
-
-### 3. Install OpenClaw
+### Installation
 
 ```bash
 npm install -g openclaw@latest
-```
-
-### 4. Run OpenClaw Setup
-
-```bash
 openclaw onboard --install-daemon
 ```
 
@@ -56,73 +95,46 @@ During setup:
 - Select **ClickClack** as the channel to use the browser dashboard
 - Skip optional skills and search providers
 
-### 5. Configure Environment Variables
+Then configure the same `.env` file described in Option A above.
 
-Create a `.env` file in the project folder:
+### Running the Pipeline
 
-```bash
-GMAIL_USER=your@gmail.com
-NOTIFY_EMAIL_TO=your@gmail.com
-GMAIL_APP_PASSWORD=your-app-password
-PYTHONUNBUFFERED=1
-```
+**Automatic (Drop and Walk Away):** same as Option A — drop a `.gef` file into the project folder, and OpenClaw's `launchd` watcher (calling `run_pipeline.sh`) picks it up within ~6 seconds.
 
-To get a Gmail App Password: Google Account → Security → 2-Step Verification → App Passwords. Generate one and paste it above.
-
-## Running the Pipeline
-
-### Option 1: Automatic (Drop and Walk Away)
-
-Drop any `.gef` file into the project folder. The pipeline starts automatically within ~6 seconds via a macOS launchd file watcher. You will receive an email when it finishes with success/failure status and timing.
-
-The watcher is anti-loop safe — it will not re-run if the same file is dropped twice or if a run is already in progress.
-
-### Option 2: On Demand from the Dashboard
-
-Open the browser dashboard:
+**On Demand from the Dashboard:**
 
 ```bash
 openclaw dashboard
 ```
 
-Then type in the chat:
+Then type in the chat: `Run the full pipeline`
 
-```
-Run the full pipeline
-```
-
-### Option 3: On Demand via iMessage
-
-Configure iMessage as a channel:
+**On Demand via iMessage:**
 
 ```bash
 openclaw configure --section channels
 ```
 
-Select iMessage, then text your Mac from your phone:
-
-```
-Run the full pipeline
-```
+Select iMessage, then text your Mac from your phone: `Run the full pipeline`
 
 ## Using a New Dataset
 
 1. Obtain a `.gef` file output from the Stereo-seq Analysis Workflow (SAW)
 2. Drop it into the project folder
-3. The pipeline runs automatically and outputs results to:
-   - `ensemble_output/` — clustering results and plots
-   - `knowledge_integration_output/` — cell type assignments
-   - `autonomous_agent_output/` — AI-generated hypotheses and discoveries
+3. The pipeline runs automatically and outputs results to `output/<stage>/<run timestamp>/`, with all three stages from one run sharing the same timestamp:
+   - `output/ensemble/<run timestamp>/` — clustering results and plots
+   - `output/annotator/<run timestamp>/` — cell type assignments
+   - `output/agent/<run timestamp>/` — AI-generated hypotheses and discoveries
 
-No code changes are needed between datasets.
+No code changes are needed between datasets, and results from different runs never overwrite each other.
 
 ## Output Files
 
 | Folder | Key Files |
 |--------|-----------|
-| `ensemble_output/` | `ensemble_results.json`, `clustering_analysis.png`, `comprehensive_report.txt` |
-| `knowledge_integration_output/` | `cell_type_assignments.csv`, `marker_detection_report.txt` |
-| `autonomous_agent_output/` | `autonomous_discoveries.json`, `autonomous_discovery_report.txt` |
+| `output/ensemble/<run timestamp>/` | `ensemble_results.json`, `clustering_analysis.png`, `comprehensive_report.txt` |
+| `output/annotator/<run timestamp>/` | `cell_type_assignments.csv`, `marker_detection_report.txt` |
+| `output/agent/<run timestamp>/` | `autonomous_discoveries.json`, `autonomous_discovery_report.txt` |
 
 ## Sample Outputs
 

@@ -2,6 +2,7 @@
 annotator.py
 """
 
+import argparse
 import h5py
 import numpy as np
 from typing import Dict, List, Tuple, Any, Optional
@@ -1071,9 +1072,35 @@ def run_enhanced_real_data_annotation(
 
 
 if __name__ == "__main__":
-    input_file            = os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef")
-    output_dir            = os.environ.get("ST_OUTPUT_DIR", "knowledge_integration_output")
-    max_cells_for_testing = None  
+    # Default output groups results under output/annotator/<run timestamp>/ so
+    # repeated runs don't overwrite each other. All stages in one orchestrated
+    # run (run_pipeline.sh / watch_runner.py) share the same timestamp via
+    # $ST_RUN_ID; a standalone run generates its own.
+    _run_id = os.environ.get("ST_RUN_ID") or time.strftime("%Y%m%d_%H%M%S")
+    _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", "annotator", _run_id))
+
+    parser = argparse.ArgumentParser(
+        description="Biology-guided cell type annotation on a Stereo-seq GEF file."
+    )
+    parser.add_argument(
+        "--input", dest="input_file",
+        default=os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef"),
+        help="Path to the input .gef file (default: %(default)s; can also be set via $ST_INPUT_GEF)",
+    )
+    parser.add_argument(
+        "--output", dest="output_dir",
+        default=_default_output,
+        help="Directory to write results to (default: output/annotator/<run timestamp>; "
+             "can also be set via $ST_OUTPUT_DIR)",
+    )
+    parser.add_argument(
+        "--max-cells", dest="max_cells", type=int, default=None,
+        help="Optional cap on the number of cells to process (default: all cells)",
+    )
+    args = parser.parse_args()
+    input_file            = args.input_file
+    output_dir            = args.output_dir
+    max_cells_for_testing = args.max_cells
 
     print("Enhanced Ovarian Biology Annotator - GEF Data Analysis")
     print("=" * 55)

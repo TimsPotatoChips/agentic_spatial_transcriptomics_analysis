@@ -1,4 +1,5 @@
 
+import argparse
 import numpy as np
 import pandas as pd
 import h5py
@@ -1316,7 +1317,7 @@ class EnsembleFramework:
 
             f.write(f"\nThis analysis demonstrates the ensemble clustering\n")
             f.write(f"framework with comprehensive parameter tuning, quality validation,\n")
-            f.write(f"and performance assessment suitable for CS298 requirements.\n")
+            f.write(f"and performance assessment for spatial transcriptomics analysis.\n")
 
     def _create_result_visualizations(self, output_dir: str):
 
@@ -1628,13 +1629,46 @@ def run_ensemble_analysis(input_file: str, output_dir: str, max_cells: int = 500
 
 
 if __name__ == "__main__":
-    # Configuration - update these paths for your system
-    input_file = os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef")
-    output_dir = os.environ.get("ST_OUTPUT_DIR", "ensemble_output")
+    # Default output groups results under output/ensemble/<run timestamp>/ so
+    # repeated runs don't overwrite each other. All stages in one orchestrated
+    # run (run_pipeline.sh / watch_runner.py) share the same timestamp via
+    # $ST_RUN_ID; a standalone run generates its own.
+    _run_id = os.environ.get("ST_RUN_ID") or time.strftime("%Y%m%d_%H%M%S")
+    _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", "ensemble", _run_id))
 
-    max_cells_for_analysis = 18000
-    use_pca_preprocessing = True
-    pca_components = 100
+    parser = argparse.ArgumentParser(
+        description="Ensemble (K-means + Hierarchical + GMM) clustering on a Stereo-seq GEF file."
+    )
+    parser.add_argument(
+        "--input", dest="input_file",
+        default=os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef"),
+        help="Path to the input .gef file (default: %(default)s; can also be set via $ST_INPUT_GEF)",
+    )
+    parser.add_argument(
+        "--output", dest="output_dir",
+        default=_default_output,
+        help="Directory to write results to (default: output/ensemble/<run timestamp>; "
+             "can also be set via $ST_OUTPUT_DIR)",
+    )
+    parser.add_argument(
+        "--max-cells", dest="max_cells", type=int, default=18000,
+        help="Maximum number of cells to analyze (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-pca", dest="use_pca", action="store_false", default=True,
+        help="Disable PCA preprocessing (enabled by default)",
+    )
+    parser.add_argument(
+        "--pca-components", dest="pca_components", type=int, default=100,
+        help="Number of PCA components to use if PCA is enabled (default: %(default)s)",
+    )
+    args = parser.parse_args()
+    input_file = args.input_file
+    output_dir = args.output_dir
+
+    max_cells_for_analysis = args.max_cells
+    use_pca_preprocessing = args.use_pca
+    pca_components = args.pca_components
 
     print("Ensemble Clustering Framework")
     print("=" * 60)
@@ -1656,7 +1690,7 @@ if __name__ == "__main__":
     if results:
         print(f"SUCCESS: ensemble clustering framework completed!")
         print(f"This implementation addresses all major issues and provides")
-        print(f"comprehensive analysis suitable for CS298 requirements.")
+        print(f"comprehensive results ready for downstream biological interpretation.")
     else:
         print(f"Analysis encountered issues. Please check the error messages above.")
 

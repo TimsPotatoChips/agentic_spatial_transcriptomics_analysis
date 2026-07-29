@@ -2,8 +2,16 @@
 .venv/
 __pycache__/
 *.pyc
+output/
 baseline_output/
 ensemble_output/
 knowledge_integration_output/
 autonomous_agent_output/
+logs/
+test_ensemble/
 B04372C211.adjusted.cellbin.gef
+*.gef
+*.egg-info/
+build/
+dist/
+.DS_Store

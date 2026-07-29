@@ -1,4 +1,5 @@
 
+import argparse
 import numpy as np
 import pandas as pd
 import h5py
@@ -1504,7 +1505,7 @@ def load_gef_data(input_file: str, max_cells: Optional[int] = None) -> Tuple[np.
 
 def run_autonomous_analysis(input_file: str,
                            max_cells: int = 3000,
-                           output_dir: str = "autonomous_agent_output",
+                           output_dir: str = "output/agent",
                            api_key: Optional[str] = None,
                            use_llm: bool = True,
                            max_iterations: int = 5):
@@ -1585,12 +1586,51 @@ def run_autonomous_analysis(input_file: str,
 
 # Execution
 if __name__ == "__main__":
+    # Default output groups results under output/agent/<run timestamp>/ so
+    # repeated runs don't overwrite each other. All stages in one orchestrated
+    # run (run_pipeline.sh / watch_runner.py) share the same timestamp via
+    # $ST_RUN_ID; a standalone run generates its own.
+    _run_id = os.environ.get("ST_RUN_ID") or time.strftime("%Y%m%d_%H%M%S")
+    _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", "agent", _run_id))
+
+    parser = argparse.ArgumentParser(
+        description="Autonomous AI agent for hypothesis-driven analysis of a Stereo-seq GEF file. "
+                     "Requires an OpenAI API key to generate/interpret hypotheses via LLM; "
+                     "without one, the agent still runs but falls back to non-LLM analysis."
+    )
+    parser.add_argument(
+        "--input", dest="input_file",
+        default=os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef"),
+        help="Path to the input .gef file (default: %(default)s; can also be set via $ST_INPUT_GEF)",
+    )
+    parser.add_argument(
+        "--output", dest="output_dir",
+        default=_default_output,
+        help="Directory to write results to (default: output/agent/<run timestamp>; "
+             "can also be set via $ST_OUTPUT_DIR)",
+    )
+    parser.add_argument(
+        "--max-cells", dest="max_cells", type=int, default=24930,
+        help="Maximum number of cells to analyze (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--max-iterations", dest="max_iterations", type=int, default=5,
+        help="Maximum number of hypothesis generate/test iterations (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--api-key", dest="api_key",
+        default=os.environ.get("OPENAI_API_KEY", ""),
+        help="OpenAI API key for LLM-based hypothesis generation (default: $OPENAI_API_KEY). "
+             "If omitted, the agent runs without LLM assistance.",
+    )
+    args = parser.parse_args()
+
     # Configuration
-    INPUT_FILE = os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef")
-    OUTPUT_DIR = os.environ.get("ST_OUTPUT_DIR", "autonomous_agent_output")
-    MAX_CELLS = 24930
-    MAX_ITERATIONS = 5
-    API_KEY = os.environ.get("OPENAI_API_KEY", "")
+    INPUT_FILE = args.input_file
+    OUTPUT_DIR = args.output_dir
+    MAX_CELLS = args.max_cells
+    MAX_ITERATIONS = args.max_iterations
+    API_KEY = args.api_key
     USE_LLM = bool(API_KEY)  # auto-disable LLM if no key present
 
     print("\n" + "-"*35)

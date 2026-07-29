@@ -21,21 +21,76 @@ FASTQ Files → SAW Processing → GEF File → Analysis → Results
 
 ## Installation
 
-### 1. Clone Spatial Transcriptomics Analysis Code
+### 1. Clone This Repository
 
 ```bash
-mkdir Spatial_Transcriptomics_Analysis_Project
-cd Spatial_Transcriptomics_Analysis_Project
-
-# Place your 5 Python files here:
-# - ai_agent.py
-# - baseline.py
-# - ensemble_clustering.py
-# - annotator.py
-# - ovarian_knowledge_base.py
+git clone <this-repo-url>
+cd "Spatial Transcriptomics Analysis"
 ```
 
-### 2. Stereo-seq Analysis Workflow
+All five analysis scripts (`baseline.py`, `ensemble_clustering.py`, `annotator.py`, `ai_agent.py`, `ovarian_knowledge_base.py`) live at the repository root — no additional setup needed to place them.
+
+### 2. Install Conda (skip if you already have it)
+
+Check first:
+
+```bash
+conda --version
+```
+
+If that command isn't found, install Miniconda:
+
+- **macOS (Homebrew):** `brew install --cask miniconda`
+- **macOS / Linux (official installer, no Homebrew):** https://docs.conda.io/en/latest/miniconda.html
+- **Windows:** download the installer from the same page and run it.
+
+After installing, restart your terminal (or run `conda init <your-shell-name>`, e.g. `conda init zsh`, then reopen your terminal) so the `conda` command is available.
+
+### 3. Set Up the Environment (conda, recommended)
+
+The pipeline's dependencies include compiled/native libraries (e.g. `h5py` links against HDF5), so **conda is the recommended way to install**, since it resolves those system-level dependencies automatically:
+
+```bash
+conda env create -f environment.yml
+conda activate spatial-transcriptomics
+```
+
+This creates an isolated environment named `spatial-transcriptomics` with Python 3.11 and every dependency pinned to the exact tested version.
+
+Then install the package itself (registers the scripts as importable modules, so they can also be run as `python -m baseline ...`, etc.):
+
+```bash
+pip install .
+```
+
+<details>
+<summary>Alternative: pip + venv</summary>
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# OR
+.venv\Scripts\activate     # Windows
+
+pip install -r requirements.txt
+```
+
+Note: this does not manage non-Python system dependencies, so you may need HDF5 installed separately depending on your OS.
+</details>
+
+### 4. Verify Installation
+
+```bash
+# Check Python version (3.9+ required; environment.yml installs 3.11)
+python --version
+
+# Check package installations
+python -c "import numpy, pandas, scipy, sklearn, h5py, umap; print('All packages installed!')"
+```
+
+### 5. (Optional) Stereo-seq SAW Pipeline
+
+Only needed if you're starting from raw FASTQ files rather than an existing GEF file (see Step 1 below).
 
 ```bash
 # Visit: https://github.com/STOmics/SAW
@@ -45,32 +100,7 @@ cd Spatial_Transcriptomics_Analysis_Project
 git clone https://github.com/STOmics/SAW.git
 cd SAW
 # Follow the installation guide in their README
-```
 
-### 3. Install Python Dependencies
-
-```bash
-# Create virtual environment
-python -m venv spatial_transcriptomics_analysis_env
-source spatial_transcriptomics_analysis_env/bin/activate  # Linux/Mac
-# OR
-spatial_transcriptomics_analysis_env\Scripts\activate  # Windows
-
-# Install required packages
-pip install numpy pandas scipy scikit-learn h5py matplotlib seaborn openai
-
-```
-
-### 4. Verify Installation
-
-```bash
-# Check Python version
-python --version  # Should be 3.8+
-
-# Check package installations
-python -c "import numpy, pandas, scipy, sklearn, h5py; print('All packages installed!')"
-
-# Check SAW installation
 saw --version # Should be 7.1+
 ```
 
@@ -157,40 +187,46 @@ GEF file link for mouse ovarian tissue (for SJSU account): https://drive.google.
 
 ### Step 3: Run Spatial Transcriptomics Analysis
 
-#### 3.1 Update File Paths
+Every script accepts `--input` and `--output` flags, so no source-code editing is required to point them at your own GEF file. If you omit `--input`, each script falls back to (in order) the `$ST_INPUT_GEF` environment variable, then a built-in default. Run `python <script>.py --help` for the full list of options on any script.
 
-Edit each Python file to update the input path:
+**Output goes to `output/<stage>/<run timestamp>/` by default** (e.g. `output/ensemble/20260727_140512/`) if you don't pass `--output` — so re-running the pipeline never silently overwrites a previous run's results. All stages run together via `run_pipeline.sh` or `watch_runner.py` share one timestamp, so a full run's results all land under the same `<run timestamp>` across `output/baseline/`, `output/ensemble/`, `output/annotator/`, and `output/agent/`. Override with `--output some/path` (or `$ST_OUTPUT_DIR`) if you want a fixed location instead.
 
-**In all files, find and update:**
-```python
-# Change this line:
-INPUT_FILE = r"path\B04372C211.adjusted.cellbin.gef"
+All commands below assume your GEF file is at `./input_data.gef` and that you've activated the conda environment from Step 2.
 
-# To your actual path:
-INPUT_FILE = ".\input_data.gef"
+**Shortcut:** rather than running each script individually, `./run_pipeline.sh` chains 3.2-3.4 (ensemble → annotation → agent) automatically in the required order. For fully automatic, ongoing analysis — drop a new `.gef` file into the project folder and it runs and notifies you when done, no manual invocation needed — run `python watch_runner.py` (cross-platform: macOS, Linux, Windows) and leave it running; see [AI_AGENT_DEPLOY.md](AI_AGENT_DEPLOY.md) for full setup, including running it as a persistent background service. The individual commands below are for running or debugging a single stage on its own.
 
+#### 3.1 Run Baseline Clustering (optional, for comparison)
+
+`baseline.py` is a standalone reference clustering method, not part of the required pipeline chain — its results are used only to benchmark how much the ensemble method (3.2) improves on a simpler baseline (see the Expected Results table below). It's not required to produce annotation or agent results.
+
+```bash
+python baseline.py --input input_data.gef
+
+# Output: output/baseline/<run timestamp>/
+# - recursive clustering results (JSON) and summary report
 ```
+
+**Time:** ~10-15 minutes
 
 #### 3.2 Run Ensemble Clustering
 
 ```bash
-python ensemble_clustering.py
+python ensemble_clustering.py --input input_data.gef
 
-# Output: ensemble_output/
+# Output: output/ensemble/<run timestamp>/
 # - ensemble_results.json
 # - clustering_analysis.png
 # - comprehensive_report.txt
 ```
 
-**Time:** 30-60 minutes (depending on cell count and computer)
+**Time:** 30-60 minutes (depending on cell count and computer). Use `--max-cells` to cap the number of cells analyzed for a faster run.
 
-#### 3.3 Run Knowledge-Based Clustering
+#### 3.3 Run Knowledge-Based Biological Annotation
 
 ```bash
-# Biology-guided cell type identification
-python annotator.py
+python annotator.py --input input_data.gef
 
-# Output: knowledge_guided_output/
+# Output: output/annotator/<run timestamp>/
 # - cell_type_assignments.csv
 # - marker_detection_report.txt
 # - spatial_coherence_analysis.json
@@ -198,55 +234,82 @@ python annotator.py
 
 **Time:** ~20 minutes
 
-#### 3.4 Run Autonomous AI Agent
+#### 3.4 Run the Autonomous AI Agent (agentic analysis)
+
+The AI agent generates and tests its own biological hypotheses using an LLM. This step is **optional** and separate from Steps 3.1-3.3, which run and produce full results with no LLM involved.
+
+**Requirements:** an OpenAI API key (the agent auto-disables LLM assistance and falls back to non-LLM analysis if no key is provided). Set it either as an environment variable or a flag:
 
 ```bash
-# Self-directed hypothesis testing and discovery
-python ai_agent.py
+# Option A: environment variable
+export OPENAI_API_KEY="sk-..."
+python ai_agent.py --input input_data.gef
 
-# Output: autonomous_agent_output/
+# Option B: command-line flag
+python ai_agent.py --input input_data.gef --api-key "sk-..."
+
+# Output: output/agent/<run timestamp>/
 # - autonomous_discoveries.json
 # - autonomous_discovery_report.txt
 # - hypothesis_validation_results.json
 ```
 
-**Time:** 10-20 minutes
+**Time:** 10-20 minutes. Use `--max-iterations` to control how many hypothesis generate/test cycles the agent runs (default: 5).
+
+For fully automated, ongoing deployment of the AI agent (e.g. auto-run on new datasets), see [AI_AGENT_DEPLOY.md](AI_AGENT_DEPLOY.md).
 
 ---
 
 ## Project Structure
 
 ```
-Spatial_Transcriptomics_Analysis_Project/
-├── README.md                          # This file        
+Spatial Transcriptomics Analysis/
+├── README.md                          # This file
+├── environment.yml                    # Conda environment spec (recommended)
+├── requirements.txt                   # Pinned pip dependencies (fallback)
+├── LICENSE
 │
-├── input_data/
-│   └── B04372C211.adjusted.cellbin.gef           
+├── baseline.py                        # Step 3.1
+├── ensemble_clustering.py             # Step 3.2
+├── annotator.py                       # Step 3.3
+├── ovarian_knowledge_base.py          # Marker/pathway knowledge base (imported by annotator.py)
+├── ai_agent.py                        # Step 3.4 (agentic analysis)
 │
-├── analysis_scripts/
-│   ├── ai_agent.py
-│   ├── baseline.py
-│   ├── ensemble_clustering.py
-│   ├── annotator.py
-│   └── ovarian_knowledge_base.py
+├── run_pipeline.sh                    # Shortcut: runs 3.2-3.4 in order (macOS/Linux)
+├── watch_runner.py                    # Cross-platform automatic watcher (see AI_AGENT_DEPLOY.md)
+├── notify.py                          # Desktop/email notifications (used by the watchers)
+├── deploy/                            # Background-service templates (launchd, systemd)
 │
-├── ensemble_output/                   # Ensemble results
-├── knowledge_guided_output/           # Annotation results
-├── autonomous_agent_output/           # AI agent results
+├── input_data.gef                     # Your GEF file (not included; see Step 2 above)
+├── output/                            # All results, grouped by stage then run
+│   ├── baseline/<run timestamp>/
+│   ├── ensemble/<run timestamp>/
+│   ├── annotator/<run timestamp>/
+│   └── agent/<run timestamp>/
 ```
 
 ---
 
-## Requirements File
+## Dependencies
 
-numpy>=1.21.0
-pandas>=1.3.0
-scipy>=1.7.0
-scikit-learn>=1.0.0
-h5py>=3.1.0
-matplotlib>=3.4.0
-seaborn>=0.11.0
-openai>=1.0.0 
+See `environment.yml` (conda, recommended) or `requirements.txt` (pip) for the exact pinned versions used and tested:
+
+```
+h5py==3.14.0
+llvmlite==0.43.0
+matplotlib==3.9.4
+numba==0.60.0
+numpy==2.0.2
+openai==2.43.0
+pandas==2.3.3
+pynndescent==0.6.0
+scikit-learn==1.6.1
+scipy==1.13.1
+seaborn==0.13.2
+umap-learn==0.5.12
+```
+
+Requires Python 3.9+ (numpy 2.x requirement); `environment.yml` installs 3.11.
 
 ---
 
@@ -319,9 +382,9 @@ In short: the **Hypothesis Generator** proposes the "what if," the **Analysis Pl
 
 ## License
 
-Spatial Transcriptomics Analysis Enhanced Framework - Academic Use Only
+Spatial Transcriptomics Analysis Enhanced Framework - released under the [MIT License](LICENSE). Freely usable, modifiable, and redistributable, including for commercial purposes, provided the copyright notice is retained.
 
-SAW - Check STOmics repository for license details
+Note: this license covers the analysis scripts in this repository only. SAW (used for FASTQ processing, Step 1) is a separate third-party tool — check the [STOmics/SAW repository](https://github.com/STOmics/SAW) for its license terms.
 
 ---
 

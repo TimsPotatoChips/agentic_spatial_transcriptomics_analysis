@@ -1,3 +1,4 @@
+import argparse
 import h5py
 import numpy as np
 import pandas as pd
@@ -249,8 +250,30 @@ def process_gef_file(input_file, output_dir):
 
 
 if __name__ == "__main__":
-    input_file = os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef")
-    output_dir = os.environ.get("ST_OUTPUT_DIR", "baseline_output")
+    # Default output groups results under output/baseline/<run timestamp>/ so
+    # repeated runs don't overwrite each other. All stages in one orchestrated
+    # run (run_pipeline.sh / watch_runner.py) share the same timestamp via
+    # $ST_RUN_ID; a standalone run generates its own.
+    _run_id = os.environ.get("ST_RUN_ID") or time.strftime("%Y%m%d_%H%M%S")
+    _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", "baseline", _run_id))
+
+    parser = argparse.ArgumentParser(
+        description="Baseline recursive clustering on a Stereo-seq GEF file."
+    )
+    parser.add_argument(
+        "--input", dest="input_file",
+        default=os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef"),
+        help="Path to the input .gef file (default: %(default)s; can also be set via $ST_INPUT_GEF)",
+    )
+    parser.add_argument(
+        "--output", dest="output_dir",
+        default=_default_output,
+        help="Directory to write results to (default: output/baseline/<run timestamp>; "
+             "can also be set via $ST_OUTPUT_DIR)",
+    )
+    args = parser.parse_args()
+    input_file = args.input_file
+    output_dir = args.output_dir
 
     start_time = time.time()
     results, genes = process_gef_file(input_file, output_dir)

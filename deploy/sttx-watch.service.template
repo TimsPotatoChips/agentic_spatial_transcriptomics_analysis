@@ -1,0 +1,33 @@
+# Linux systemd user service template for watch_runner.py.
+#
+# Keeps the cross-platform watcher (watch_runner.py) running in the
+# background and automatically restarts it on login/crash.
+#
+# Replace every <<PLACEHOLDER>> below with your actual paths, then:
+#
+#   mkdir -p ~/.config/systemd/user
+#   cp sttx-watch.service.template ~/.config/systemd/user/sttx-watch.service
+#   # edit the copy to fill in the placeholders
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now sttx-watch.service
+#
+# To check status / logs:
+#   systemctl --user status sttx-watch.service
+#   journalctl --user -u sttx-watch.service -f
+#
+# To stop it:
+#   systemctl --user disable --now sttx-watch.service
+
+[Unit]
+Description=Spatial Transcriptomics automatic pipeline watcher
+After=default.target
+
+[Service]
+Type=simple
+WorkingDirectory=<<PATH_TO_PROJECT>>
+ExecStart=<<PATH_TO_PYTHON>> <<PATH_TO_PROJECT>>/watch_runner.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

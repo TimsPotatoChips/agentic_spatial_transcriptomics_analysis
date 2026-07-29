@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main, cleanup]
+  pull_request:
+    branches: [main, cleanup]
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run smoke tests
+        run: python -m unittest tests/test_smoke.py -v

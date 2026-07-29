@@ -12,9 +12,12 @@
 
 set -uo pipefail
 
-PROJECT_DIR="/Users/Minjun/Spatial Transcriptomics Analysis"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_DIR="$HOME/Library/Logs/sttx-watch"
-PY="$PROJECT_DIR/.venv/bin/python"
+# notify.py only uses the standard library, so any system python3 works here —
+# the actual pipeline environment (conda/venv) is resolved separately inside
+# run_pipeline.sh.
+PY="$(command -v python3 || echo python3)"
 
 mkdir -p "$STATE_DIR"
 LOCK="$STATE_DIR/run.lock"

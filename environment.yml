@@ -1,0 +1,21 @@
+name: spatial-transcriptomics
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - h5py==3.14.0
+      - llvmlite==0.43.0
+      - matplotlib==3.9.4
+      - numba==0.60.0
+      - numpy==2.0.2
+      - openai==2.43.0
+      - pandas==2.3.3
+      - pynndescent==0.6.0
+      - scikit-learn==1.6.1
+      - scipy==1.13.1
+      - seaborn==0.13.2
+      - umap-learn==0.5.12
+      - watchdog==6.0.0
