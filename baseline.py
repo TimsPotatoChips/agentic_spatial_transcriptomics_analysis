@@ -1,4 +1,5 @@
 import argparse
+import glob
 import h5py
 import numpy as np
 import pandas as pd
@@ -257,13 +258,21 @@ if __name__ == "__main__":
     _run_id = os.environ.get("ST_RUN_ID") or time.strftime("%Y%m%d_%H%M%S")
     _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", "baseline", _run_id))
 
+    # Default input: $ST_INPUT_GEF, else auto-detect if exactly one .gef file
+    # exists in the current directory. No hardcoded filename — this works with
+    # anyone's data, not just one specific sample.
+    _env_input = os.environ.get("ST_INPUT_GEF")
+    _gef_candidates = sorted(glob.glob("*.gef"))
+    _default_input = _env_input or (_gef_candidates[0] if len(_gef_candidates) == 1 else None)
+
     parser = argparse.ArgumentParser(
         description="Baseline recursive clustering on a Stereo-seq GEF file."
     )
     parser.add_argument(
         "--input", dest="input_file",
-        default=os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef"),
-        help="Path to the input .gef file (default: %(default)s; can also be set via $ST_INPUT_GEF)",
+        default=_default_input,
+        help="Path to the input .gef file. Defaults to $ST_INPUT_GEF, or the single "
+             ".gef file in the current directory if there's exactly one.",
     )
     parser.add_argument(
         "--output", dest="output_dir",
@@ -272,6 +281,15 @@ if __name__ == "__main__":
              "can also be set via $ST_OUTPUT_DIR)",
     )
     args = parser.parse_args()
+    if not args.input_file:
+        n = len(_gef_candidates)
+        if n == 0:
+            parser.error("No --input given, $ST_INPUT_GEF not set, and no .gef file "
+                          "found in the current directory. Specify --input path/to/file.gef.")
+        else:
+            parser.error(f"No --input given and {n} .gef files found in the current "
+                          f"directory ({', '.join(_gef_candidates)}) — ambiguous. "
+                          f"Specify --input path/to/file.gef.")
     input_file = args.input_file
     output_dir = args.output_dir
 

@@ -187,7 +187,13 @@ GEF file link for mouse ovarian tissue (for SJSU account): https://drive.google.
 
 ### Step 3: Run Spatial Transcriptomics Analysis
 
-Every script accepts `--input` and `--output` flags, so no source-code editing is required to point them at your own GEF file. If you omit `--input`, each script falls back to (in order) the `$ST_INPUT_GEF` environment variable, then a built-in default. Run `python <script>.py --help` for the full list of options on any script.
+Every script accepts `--input` and `--output` flags, so no source-code editing is required to point them at your own GEF file. There's no hardcoded filename to match — if you omit `--input`, each script resolves it in this order:
+
+1. The `$ST_INPUT_GEF` environment variable, if set.
+2. Otherwise, if there's exactly one `.gef` file in the current directory, that file is used automatically.
+3. Otherwise (zero, or more than one, `.gef` file present with no explicit input given), the script exits with a clear error telling you to pass `--input` explicitly.
+
+So for the common case — one dataset per folder — you usually don't need to pass `--input` at all. Run `python <script>.py --help` for the full list of options on any script.
 
 **Output goes to `output/<stage>/<run timestamp>/` by default** (e.g. `output/ensemble/20260727_140512/`) if you don't pass `--output` — so re-running the pipeline never silently overwrites a previous run's results. All stages run together via `run_pipeline.sh` or `watch_runner.py` share one timestamp, so a full run's results all land under the same `<run timestamp>` across `output/baseline/`, `output/ensemble/`, `output/annotator/`, and `output/agent/`. Override with `--output some/path` (or `$ST_OUTPUT_DIR`) if you want a fixed location instead.
 
@@ -238,7 +244,7 @@ python annotator.py --input input_data.gef
 
 The AI agent generates and tests its own biological hypotheses using an LLM. This step is **optional** and separate from Steps 3.1-3.3, which run and produce full results with no LLM involved.
 
-**Requirements:** an OpenAI API key (the agent auto-disables LLM assistance and falls back to non-LLM analysis if no key is provided). Set it either as an environment variable or a flag:
+**Requirements:** an OpenAI API key **with available quota/billing enabled** — not just any key. If the key has no quota (e.g. a free-tier key with no credits, or a trial that's expired), the agent does not error out or warn loudly: it silently falls back to non-LLM (rule-based) hypothesis generation, and you'll only see the problem by opening the run's log and finding lines like `LLM hypothesis generation failed: ... insufficient_quota`. The pipeline still completes and produces results either way, but you only get the LLM-driven discovery behavior with a funded key. Set it either as an environment variable or a flag:
 
 ```bash
 # Option A: environment variable

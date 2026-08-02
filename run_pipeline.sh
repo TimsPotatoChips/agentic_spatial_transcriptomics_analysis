@@ -80,10 +80,10 @@ fi
 
 # Resolve the GEF input:
 #   1) explicit ST_INPUT_GEF wins
-#   2) else the expected default filename
-#   3) else auto-detect if exactly one *.gef exists in the folder
-GEF="${ST_INPUT_GEF:-$PROJECT_DIR/B04372C211.adjusted.cellbin.gef}"
-if [[ -z "${ST_INPUT_GEF:-}" && ! -f "$GEF" ]]; then
+#   2) else auto-detect if exactly one *.gef exists in the folder
+# No hardcoded filename — this works with anyone's data, not just one sample.
+GEF="${ST_INPUT_GEF:-}"
+if [[ -z "$GEF" ]]; then
   shopt -s nullglob
   gef_matches=("$PROJECT_DIR"/*.gef)
   shopt -u nullglob
@@ -107,16 +107,31 @@ if [[ -z "$PY" || ! -x "$PY" ]]; then
 fi
 echo "Using Python: $PY"
 
-if [[ ! -f "$GEF" ]]; then
-  echo "ERROR: GEF input file not found:" >&2
-  echo "       $GEF" >&2
-  echo "       Place the .gef file in $PROJECT_DIR (or set ST_INPUT_GEF) and re-run." >&2
+if [[ -z "$GEF" || ! -f "$GEF" ]]; then
+  echo "ERROR: no GEF input file found." >&2
+  echo "       Place a single .gef file in $PROJECT_DIR, or set \$ST_INPUT_GEF" >&2
+  echo "       to an explicit path, and re-run." >&2
   exit 2
 fi
 
 export ST_INPUT_GEF="$GEF"
 export ST_RUN_ID="$RUN_TS"
 mkdir -p "$LOG_DIR"
+
+# How often to print a "still running" heartbeat while a stage executes.
+# Override with $ST_HEARTBEAT_SECS if you want it chattier/quieter.
+HEARTBEAT_SECS="${ST_HEARTBEAT_SECS:-60}"
+
+format_duration() {
+  local total=$1 m s
+  m=$(( total / 60 ))
+  s=$(( total % 60 ))
+  if [[ $m -gt 0 ]]; then
+    printf '%dm%02ds' "$m" "$s"
+  else
+    printf '%ds' "$s"
+  fi
+}
 
 run_stage() {
   local name="$1" script="$2"
@@ -125,15 +140,56 @@ run_stage() {
   echo "    input : $ST_INPUT_GEF"
   echo "    log   : $log"
   local start; start=$(date +%s)
-  if "$PY" "$script" >"$log" 2>&1; then
-    local dur=$(( $(date +%s) - start ))
-    echo "<<< [$name] done in ${dur}s"
+
+  "$PY" "$script" >"$log" 2>&1 &
+  local pid=$!
+
+  # Heartbeat so long silent stretches (clustering/embedding steps can run
+  # many minutes with no console output) don't look like the pipeline hung.
+  while kill -0 "$pid" 2>/dev/null; do
+    sleep "$HEARTBEAT_SECS"
+    if kill -0 "$pid" 2>/dev/null; then
+      local elapsed=$(( $(date +%s) - start ))
+      echo "    ... [$name] still running (elapsed: $(format_duration "$elapsed"))"
+    fi
+  done
+
+  local status
+  if wait "$pid"; then
+    status=0
   else
-    echo "!!! [$name] FAILED — see $log (last lines below):" >&2
+    status=$?
+  fi
+
+  if [[ $status -eq 0 ]]; then
+    local dur=$(( $(date +%s) - start ))
+    echo "<<< [$name] done in $(format_duration "$dur")"
+  else
+    echo "!!! [$name] FAILED (exit $status) — see $log (last lines below):" >&2
     tail -20 "$log" >&2
     exit 3
   fi
 }
+
+# --- Notify on completion (success or failure) --------------------------------
+# Mirrors what watch_runner.py/watch_runner.sh do for automatic runs, so a
+# manual ./run_pipeline.sh also emails/desktop-notifies you when it's done.
+# Best-effort: notify.py itself no-ops email if GMAIL_* isn't set in .env.
+PIPELINE_START=$(date +%s)
+notify_on_exit() {
+  local exit_code=$?
+  trap - EXIT
+  local total_dur=$(( $(date +%s) - PIPELINE_START ))
+  local status="SUCCESS"
+  [[ $exit_code -ne 0 ]] && status="FAILED"
+  local summary="Spatial Transcriptomics pipeline $status in $(format_duration "$total_dur") — file: $(basename "$GEF"). Logs: $LOG_DIR"
+  echo "$summary"
+  if [[ -n "${PY:-}" && -f "$PROJECT_DIR/notify.py" ]]; then
+    "$PY" "$PROJECT_DIR/notify.py" "ST pipeline: $status" "$summary" || true
+  fi
+  exit "$exit_code"
+}
+trap notify_on_exit EXIT
 
 STAGE="${1:-all}"
 echo "=== Spatial Transcriptomics pipeline | run $RUN_TS | stage=$STAGE ==="

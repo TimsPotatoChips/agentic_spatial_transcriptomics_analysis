@@ -52,6 +52,16 @@ WATCH_LOG = STATE_DIR / "watch.log"
 STABILIZE_POLL_INTERVAL = 2.0  # seconds
 STABILIZE_MAX_POLLS = 60       # ~2 minutes max wait for a file to stop growing
 
+# How often to print a "still running" heartbeat while a stage executes.
+# Override with $ST_HEARTBEAT_SECS if you want it chattier/quieter.
+HEARTBEAT_SECS = int(os.environ.get("ST_HEARTBEAT_SECS", "60"))
+
+
+def _format_duration(total_seconds: float) -> str:
+    total = int(total_seconds)
+    m, s = divmod(total, 60)
+    return f"{m}m{s:02d}s" if m else f"{s}s"
+
 
 def log(message: str) -> None:
     line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
@@ -133,18 +143,28 @@ def run_stage(project_dir: Path, log_dir: Path, run_ts: str, name: str, script: 
     env["ST_INPUT_GEF"] = str(input_gef)
     env["ST_RUN_ID"] = run_ts
     with open(log_path, "w") as logfile:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             [py, str(project_dir / script), "--input", str(input_gef)],
             cwd=str(project_dir),
             env=env,
             stdout=logfile,
             stderr=subprocess.STDOUT,
         )
+        # Heartbeat so long silent stretches (clustering/embedding steps can
+        # run many minutes with no console output) don't look like the
+        # pipeline hung.
+        returncode = None
+        while returncode is None:
+            try:
+                returncode = proc.wait(timeout=HEARTBEAT_SECS)
+            except subprocess.TimeoutExpired:
+                elapsed = time.time() - start
+                log(f"    ... [{name}] still running (elapsed: {_format_duration(elapsed)})")
     dur = time.time() - start
-    if result.returncode == 0:
-        log(f"<<< [{name}] done in {dur:.0f}s")
+    if returncode == 0:
+        log(f"<<< [{name}] done in {_format_duration(dur)}")
         return True
-    log(f"!!! [{name}] FAILED (exit {result.returncode}) — see {log_path}")
+    log(f"!!! [{name}] FAILED (exit {returncode}) — see {log_path}")
     try:
         tail = log_path.read_text().splitlines()[-20:]
         for line in tail:

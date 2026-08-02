@@ -1,5 +1,6 @@
 
 import argparse
+import glob
 import numpy as np
 import pandas as pd
 import h5py
@@ -1593,6 +1594,13 @@ if __name__ == "__main__":
     _run_id = os.environ.get("ST_RUN_ID") or time.strftime("%Y%m%d_%H%M%S")
     _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", "agent", _run_id))
 
+    # Default input: $ST_INPUT_GEF, else auto-detect if exactly one .gef file
+    # exists in the current directory. No hardcoded filename — this works with
+    # anyone's data, not just one specific sample.
+    _env_input = os.environ.get("ST_INPUT_GEF")
+    _gef_candidates = sorted(glob.glob("*.gef"))
+    _default_input = _env_input or (_gef_candidates[0] if len(_gef_candidates) == 1 else None)
+
     parser = argparse.ArgumentParser(
         description="Autonomous AI agent for hypothesis-driven analysis of a Stereo-seq GEF file. "
                      "Requires an OpenAI API key to generate/interpret hypotheses via LLM; "
@@ -1600,8 +1608,9 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--input", dest="input_file",
-        default=os.environ.get("ST_INPUT_GEF", "B04372C211.adjusted.cellbin.gef"),
-        help="Path to the input .gef file (default: %(default)s; can also be set via $ST_INPUT_GEF)",
+        default=_default_input,
+        help="Path to the input .gef file. Defaults to $ST_INPUT_GEF, or the single "
+             ".gef file in the current directory if there's exactly one.",
     )
     parser.add_argument(
         "--output", dest="output_dir",
@@ -1624,6 +1633,15 @@ if __name__ == "__main__":
              "If omitted, the agent runs without LLM assistance.",
     )
     args = parser.parse_args()
+    if not args.input_file:
+        n = len(_gef_candidates)
+        if n == 0:
+            parser.error("No --input given, $ST_INPUT_GEF not set, and no .gef file "
+                          "found in the current directory. Specify --input path/to/file.gef.")
+        else:
+            parser.error(f"No --input given and {n} .gef files found in the current "
+                          f"directory ({', '.join(_gef_candidates)}) — ambiguous. "
+                          f"Specify --input path/to/file.gef.")
 
     # Configuration
     INPUT_FILE = args.input_file
