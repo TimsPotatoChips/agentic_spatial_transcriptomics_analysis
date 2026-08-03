@@ -121,10 +121,10 @@ Select iMessage, then text your Mac from your phone: `Run the full pipeline`
 
 1. Obtain a `.gef` file output from the Stereo-seq Analysis Workflow (SAW)
 2. Drop it into the project folder
-3. The pipeline runs automatically and outputs results to `output/<stage>/<run timestamp>/`, with all three stages from one run sharing the same timestamp:
-   - `output/ensemble/<run timestamp>/` — clustering results and plots
-   - `output/annotator/<run timestamp>/` — cell type assignments
-   - `output/agent/<run timestamp>/` — AI-generated hypotheses and discoveries
+3. The pipeline runs automatically and outputs results to `output/<run timestamp>/<stage>/`, with all three stages from one run sharing the same timestamp folder:
+   - `output/<run timestamp>/ensemble/` — clustering results and plots
+   - `output/<run timestamp>/annotator/` — cell type assignments
+   - `output/<run timestamp>/agent/` — AI-generated hypotheses and discoveries
 
 No code changes are needed between datasets, and results from different runs never overwrite each other.
 
@@ -132,9 +132,9 @@ No code changes are needed between datasets, and results from different runs nev
 
 | Folder | Key Files |
 |--------|-----------|
-| `output/ensemble/<run timestamp>/` | `ensemble_results.json`, `clustering_analysis.png`, `comprehensive_report.txt` |
-| `output/annotator/<run timestamp>/` | `cell_type_assignments.csv`, `marker_detection_report.txt` |
-| `output/agent/<run timestamp>/` | `autonomous_discoveries.json`, `autonomous_discovery_report.txt` |
+| `output/<run timestamp>/ensemble/` | `ensemble_results.json`, `clustering_analysis.png`, `comprehensive_report.txt` |
+| `output/<run timestamp>/annotator/` | `cell_type_assignments.csv`, `marker_detection_report.txt` |
+| `output/<run timestamp>/agent/` | `autonomous_discoveries.json`, `autonomous_discovery_report.txt` |
 
 ## Sample Outputs
 

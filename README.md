@@ -195,7 +195,7 @@ Every script accepts `--input` and `--output` flags, so no source-code editing i
 
 So for the common case — one dataset per folder — you usually don't need to pass `--input` at all. Run `python <script>.py --help` for the full list of options on any script.
 
-**Output goes to `output/<stage>/<run timestamp>/` by default** (e.g. `output/ensemble/20260727_140512/`) if you don't pass `--output` — so re-running the pipeline never silently overwrites a previous run's results. All stages run together via `run_pipeline.sh` or `watch_runner.py` share one timestamp, so a full run's results all land under the same `<run timestamp>` across `output/baseline/`, `output/ensemble/`, `output/annotator/`, and `output/agent/`. Override with `--output some/path` (or `$ST_OUTPUT_DIR`) if you want a fixed location instead.
+**Output goes to `output/<run timestamp>/<stage>/` by default** (e.g. `output/20260727_140512/ensemble/`) if you don't pass `--output` — so re-running the pipeline never silently overwrites a previous run's results, and everything one run produces lives together under a single timestamped folder. All stages run together via `run_pipeline.sh` or `watch_runner.py` share one timestamp, so a full run's results all land under `output/<run timestamp>/ensemble/`, `output/<run timestamp>/annotator/`, and `output/<run timestamp>/agent/`. (`baseline.py` is a standalone script outside the pipeline chain and still writes to its own `output/baseline/<run timestamp>/`.) Override with `--output some/path` (or `$ST_OUTPUT_DIR`) if you want a fixed location instead.
 
 All commands below assume your GEF file is at `./input_data.gef` and that you've activated the conda environment from Step 2.
 
@@ -219,7 +219,7 @@ python baseline.py --input input_data.gef
 ```bash
 python ensemble_clustering.py --input input_data.gef
 
-# Output: output/ensemble/<run timestamp>/
+# Output: output/<run timestamp>/ensemble/
 # - ensemble_results.json
 # - clustering_analysis.png
 # - comprehensive_report.txt
@@ -232,7 +232,7 @@ python ensemble_clustering.py --input input_data.gef
 ```bash
 python annotator.py --input input_data.gef
 
-# Output: output/annotator/<run timestamp>/
+# Output: output/<run timestamp>/annotator/
 # - cell_type_assignments.csv
 # - marker_detection_report.txt
 # - spatial_coherence_analysis.json
@@ -254,7 +254,7 @@ python ai_agent.py --input input_data.gef
 # Option B: command-line flag
 python ai_agent.py --input input_data.gef --api-key "sk-..."
 
-# Output: output/agent/<run timestamp>/
+# Output: output/<run timestamp>/agent/
 # - autonomous_discoveries.json
 # - autonomous_discovery_report.txt
 # - hypothesis_validation_results.json

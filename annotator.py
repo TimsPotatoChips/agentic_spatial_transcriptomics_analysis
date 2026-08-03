@@ -1073,12 +1073,13 @@ def run_enhanced_real_data_annotation(
 
 
 if __name__ == "__main__":
-    # Default output groups results under output/annotator/<run timestamp>/ so
-    # repeated runs don't overwrite each other. All stages in one orchestrated
-    # run (run_pipeline.sh / watch_runner.py) share the same timestamp via
-    # $ST_RUN_ID; a standalone run generates its own.
+    # Default output groups results under output/<run timestamp>/annotator/ so
+    # repeated runs don't overwrite each other, and everything from one run
+    # lives together. All stages in one orchestrated run (run_pipeline.sh /
+    # watch_runner.py) share the same timestamp via $ST_RUN_ID; a standalone
+    # run generates its own.
     _run_id = os.environ.get("ST_RUN_ID") or time.strftime("%Y%m%d_%H%M%S")
-    _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", "annotator", _run_id))
+    _default_output = os.environ.get("ST_OUTPUT_DIR", os.path.join("output", _run_id, "annotator"))
 
     # Default input: $ST_INPUT_GEF, else auto-detect if exactly one .gef file
     # exists in the current directory. No hardcoded filename — this works with
@@ -1099,7 +1100,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output", dest="output_dir",
         default=_default_output,
-        help="Directory to write results to (default: output/annotator/<run timestamp>; "
+        help="Directory to write results to (default: output/<run timestamp>/annotator; "
              "can also be set via $ST_OUTPUT_DIR)",
     )
     parser.add_argument(
