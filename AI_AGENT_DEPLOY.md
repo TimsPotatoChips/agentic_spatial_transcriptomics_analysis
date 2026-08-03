@@ -109,6 +109,14 @@ openclaw dashboard
 
 Then type in the chat: `Run the full pipeline`
 
+**On Demand from the Terminal:** if you'd rather not leave a browser tab open, OpenClaw also has a local text-based chat interface right in your terminal — no browser required:
+
+```bash
+openclaw chat
+```
+
+(`openclaw terminal` and `openclaw tui --local` are equivalent aliases.) Once it opens, type `Run the full pipeline` the same as you would in the dashboard. This talks to the same already-running gateway, so it works as long as OpenClaw is running in the background (e.g. via the `launchd` daemon from `openclaw onboard --install-daemon`) — you don't need to start anything else first.
+
 **On Demand via iMessage:**
 
 ```bash
