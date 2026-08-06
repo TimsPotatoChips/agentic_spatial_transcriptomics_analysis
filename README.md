@@ -181,7 +181,7 @@ cp saw_output/*.gef ./input_data.gef
 
 **Note:** If you already have a GEF file, you can skip Step 1 entirely and start here! 
 
-GEF file link for mouse ovarian tissue (for SJSU account): https://drive.google.com/file/d/1KTiaVZ6b734-6N9xbdI6t9Vx9xXRuOuu/view?usp=sharing
+GEF file link for mouse ovarian tissue (public): https://drive.google.com/file/d/1CsbvW46f0W-zSEl-7YmpzNPjbIINF4qG/view
 
 ---
 
