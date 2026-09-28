@@ -28,13 +28,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/TimsPotatoChips/openclaw_spatial_transcriptomics_analysis"
+Repository = "https://github.com/wandreopoulos/agentic_spatial_transcriptomics_analysis"
 
-[tool.setuptools]
-py-modules = [
-  "baseline",
-  "ensemble_clustering",
-  "annotator",
-  "ai_agent",
-  "ovarian_knowledge_base",
-]
+[tool.setuptools.packages.find]
+where = ["src"]
