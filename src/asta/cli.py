@@ -6,7 +6,31 @@ Each function below runs the corresponding module exactly as
 keeps working completely unchanged.
 """
 
+import os
 import runpy
+import sys
+from pathlib import Path
+
+
+def _run_bundled_script(name):
+    """Hand off to one of our own bundled .sh files (shipped as package data,
+    next to this file) via bash. Uses os.execvpe, which *replaces* this
+    Python process with bash, so the script's exit code and Ctrl-C behave
+    exactly as if it had been run directly — nothing waits around it.
+    ST_PYTHON tells the script exactly which Python interpreter this package
+    is installed under, which matters under launchd/cron where PATH is
+    minimal and no conda/venv is active."""
+    script = Path(__file__).with_name(name)
+    env = dict(os.environ, ST_PYTHON=sys.executable)
+    os.execvpe("bash", ["bash", str(script), *sys.argv[1:]], env)
+
+
+def run_pipeline():
+    _run_bundled_script("run_pipeline.sh")
+
+
+def watch_launchd():
+    _run_bundled_script("watch_runner.sh")
 
 
 def baseline():

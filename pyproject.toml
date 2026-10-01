@@ -30,5 +30,18 @@ dependencies = [
 [project.urls]
 Repository = "https://github.com/wandreopoulos/agentic_spatial_transcriptomics_analysis"
 
+[project.scripts]
+asta-baseline = "asta.cli:baseline"
+asta-ensemble = "asta.cli:ensemble"
+asta-annotate = "asta.cli:annotate"
+asta-agent    = "asta.cli:agent"
+asta-notify   = "asta.cli:notify"
+asta-watch    = "asta.watch_runner:main"
+asta-run           = "asta.cli:run_pipeline"
+asta-watch-launchd = "asta.cli:watch_launchd"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+asta = ["*.sh"]
