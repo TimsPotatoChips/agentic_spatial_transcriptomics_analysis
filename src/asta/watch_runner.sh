@@ -16,6 +16,20 @@
 #   ST_DATA_DIR=/path asta-watch-launchd   # or via env var
 # With neither, it watches the current directory.
 
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  cat <<'EOF'
+Usage: asta-watch-launchd [DATA_DIR]
+
+launchd-triggered handler for new GEF drops (macOS/OpenClaw workflow). Runs
+the pipeline once for the newest unprocessed *.gef in DATA_DIR (default:
+$ST_DATA_DIR, or the current directory), then notifies. Meant to be invoked
+by a launchd agent on a timer, not run interactively.
+
+  DATA_DIR    folder to watch for a .gef file (optional positional arg)
+EOF
+  exit 0
+fi
+
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # our own install location, to find run_pipeline.sh next to us
