@@ -100,7 +100,7 @@ Then configure the same `.env` file described in Option A above.
 
 ### Running the Pipeline
 
-**Automatic (Drop and Walk Away):** same as Option A — drop a `.gef` file into your data folder, and OpenClaw's `launchd` watcher (running `asta-watch-launchd`, which in turn calls the bundled `run_pipeline.sh`) picks it up within ~6 seconds. When OpenClaw's onboarding asks for the path to the watcher, point it at the installed `asta-watch-launchd` command rather than a path inside a git clone.
+**Automatic (Drop and Walk Away):** same as Option A — drop a `.gef` file into your data folder, and OpenClaw's `launchd` watcher (running `asta-watch-launchd`, which in turn calls the bundled `run_pipeline.sh`) picks it up within ~6 seconds. Configure OpenClaw's watcher to run `<env>/bin/asta-watch-launchd <DATA_DIR>` rather than a path inside a git clone.
 
 **On Demand from the Dashboard:**
 

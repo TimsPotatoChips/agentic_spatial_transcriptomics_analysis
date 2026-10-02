@@ -45,17 +45,12 @@ RUN_TS="$(date +%Y%m%d_%H%M%S)"
 #      to the exact interpreter this package is installed under. This is what
 #      makes launchd/cron runs correct even though they start with a minimal
 #      PATH and no conda/venv activated.
-#   2) an already-active environment (conda or venv) — respect whatever the
-#      caller has activated (covers running `bash src/asta/run_pipeline.sh`
-#      directly from an activated env, without going through asta-run)
-#   3) whatever python3 is on PATH
+#   2) whatever python3 is on PATH — covers running
+#      `bash src/asta/run_pipeline.sh` directly from an activated conda/venv
+#      env, without going through asta-run
 resolve_python() {
   if [[ -n "${ST_PYTHON:-}" && -x "${ST_PYTHON}" ]]; then
     echo "$ST_PYTHON"
-    return 0
-  fi
-  if [[ -n "${CONDA_PREFIX:-}" || -n "${VIRTUAL_ENV:-}" ]] && command -v python3 >/dev/null 2>&1; then
-    command -v python3
     return 0
   fi
   command -v python3 2>/dev/null
@@ -90,8 +85,8 @@ fi
 # --- Preflight checks --------------------------------------------------------
 if [[ -z "$PY" || ! -x "$PY" ]]; then
   echo "ERROR: could not find a Python interpreter to run the pipeline with." >&2
-  echo "       Activate the conda env this package is installed in, e.g.:" >&2
-  echo "         conda activate spatial-transcriptomics" >&2
+  echo "       Activate the conda/venv environment this package is installed in" >&2
+  echo "       (e.g. 'conda activate <env-name>') and re-run." >&2
   exit 1
 fi
 echo "Using Python: $PY"
@@ -162,7 +157,7 @@ run_stage() {
 
 # --- Notify on completion (success or failure) --------------------------------
 # Mirrors what watch_runner.py/watch_runner.sh do for automatic runs, so a
-# manual ./run_pipeline.sh also emails/desktop-notifies you when it's done.
+# manual asta-run also emails/desktop-notifies you when it's done.
 # Best-effort: notify.py itself no-ops email if GMAIL_* isn't set in .env.
 PIPELINE_START=$(date +%s)
 notify_on_exit() {
