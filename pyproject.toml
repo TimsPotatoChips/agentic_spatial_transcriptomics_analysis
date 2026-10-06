@@ -35,7 +35,8 @@ asta-annotate = "asta.cli:annotate"
 asta-agent    = "asta.cli:agent"
 asta-notify   = "asta.cli:notify"
 asta-watch    = "asta.watch_runner:main"
-asta-run           = "asta.cli:run_pipeline"
+asta-saw      = "asta.saw:main"
+asta-run           ="asta.cli:run_pipeline"
 asta-watch-launchd = "asta.cli:watch_launchd"
 
 [tool.setuptools.packages.find]

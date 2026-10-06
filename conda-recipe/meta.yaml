@@ -61,6 +61,8 @@ test:
     - asta-run --help
     - asta-watch --help
     - asta-watch-launchd --help
+    # Not `asta-saw check`: it correctly exits 1 where SAW isn't installed.
+    - asta-saw --help
     # asta-notify takes positional subject/body args, not flags, so
     # --help would be read as the subject and block waiting for the body
     # on stdin. Just confirm it's installed (tests/test_smoke.py does the

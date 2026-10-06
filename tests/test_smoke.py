@@ -32,7 +32,7 @@ STAGE_COMMANDS = ["asta-baseline", "asta-ensemble", "asta-annotate", "asta-agent
 # asta-notify is deliberately excluded: it takes positional subject/body
 # args, not flags, so "--help" would be read as the subject and then block
 # on stdin for the body. See TestNotifyInstalled.
-HELP_COMMANDS = STAGE_COMMANDS + ["asta-run", "asta-watch", "asta-watch-launchd"]
+HELP_COMMANDS = STAGE_COMMANDS + ["asta-run", "asta-watch", "asta-watch-launchd", "asta-saw"]
 
 
 def _run(args, **kwargs):

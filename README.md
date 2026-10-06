@@ -88,100 +88,64 @@ python --version
 python -c "import numpy, pandas, scipy, sklearn, h5py, umap; print('All packages installed!')"
 ```
 
-### 5. (Optional) Stereo-seq SAW Pipeline
+### (Optional) Processing raw FASTQ files with SAW
 
-Only needed if you're starting from raw FASTQ files rather than an existing GEF file (see Step 1 below).
+**You only need this if you are starting from raw FASTQ files.** If you already have a cell-bin `.gef` file, skip this section and go to "Pipeline Steps" below.
+
+Raw Stereo-seq reads are turned into a `.gef` file by **SAW**, STOmics' own pipeline. SAW is a separate third-party tool and is **not** installed with this package (it is a ~6.6 GB Linux-only binary). ASTA provides `asta-saw`, which finds an installed SAW, runs it for you, and hands the result to the analysis pipeline.
+
+**Platform and requirements.** SAW runs on **64-bit x86_64 Linux only** (tested by STOmics on CentOS/RedHat 7.8 and Ubuntu 20.04) and needs 8+ CPU cores (24+ recommended), 128 GB+ RAM (256 GB+ recommended) and 1 TB+ free disk. It does not run on macOS. On a Mac, run SAW on a Linux server and copy the resulting `.gef` back to analyze it locally.
+
+**Install SAW.** Download the current release from the [STOmics SAW Download Center](https://stereotoolss-organization.gitbook.io/saw-user-manual-v8.3/download-center), which also lists versions and checksums (they change, so they are not copied here), then unpack it:
 
 ```bash
-# Visit: https://github.com/STOmics/SAW
-# Follow installation instructions for your system
-
-# For Linux/macOS:
-git clone https://github.com/STOmics/SAW.git
-cd SAW
-# Follow the installation guide in their README
-
-saw --version # Should be 7.1+
+mkdir -p ~/tools && tar -xzf saw-<version>.tar.gz -C ~/tools   # pick any location
+find ~/tools/saw-<version> -name saw -type f    # prints the path to the saw executable
+export SAW_BIN=/path/printed/above              # or add its folder to your PATH
+asta-saw check                                  # finds SAW and prints its version
 ```
+
+`asta-saw check` looks for SAW in this order: `--saw PATH`, `$SAW_BIN`, then `saw` on your `PATH`. It also compares your machine to SAW's minimum requirements (warnings only) and never downloads anything. The SAW [user manual](https://stereotoolss-organization.gitbook.io/saw-user-manual-v8.3) describes everything below in more detail.
+
+**Chip mask and reference genome.** Each SAW run needs the chip mask for your chip's serial number (`saw support download --chip-mask-sn=<SN> --output=<dir>`, SAW 8.3+) and a reference genome index (a separate ~30 GB download, linked from the Download Center).
+
+**Run SAW.** `asta-saw count` runs `saw count` with your arguments passed through unchanged, so use the [`saw count` options](https://stereotoolss-organization.gitbook.io/saw-user-manual-v8.2/analysis/pipelines/saw-commands) exactly as documented. Always pass `--id`: it names the results folder.
+
+```bash
+asta-saw count \
+  --id=my_run --sn=<SN> --omics=transcriptomics \
+  --kit-version="<kit version>" --sequencing-type="<type>" \
+  --chip-mask=<chip-mask-file> \
+  --fastqs=<fastq-folder> --reference=<reference-folder> \
+  --image=<stain-image>
+```
+
+> **A stain image is required to get a cell-bin GEF.** The pipeline needs per-cell data, which only exists if cell segmentation ran. Pass `--image` (or `--image-tar`) and do not use `--skip-cellbin`. The `*.tissue.gef` / `*.raw.gef` files (square bins) and `*.protein.*.gef` files (Stereo-CITE protein) are not valid input.
+
+SAW typically runs for hours. Its output is shown on screen and also saved to `logs/<timestamp>_saw.log`.
+
+**Continue with ASTA.** When SAW finishes, `asta-saw` finds the RNA cell-bin GEF in `<id>/outs/feature_expression/` (preferring `*.adjusted.cellbin.gef`) and prints the next step. Either do it in one go:
+
+```bash
+asta-saw count --analyze <same arguments as above>    # runs SAW, then asta-run all on the GEF
+```
+
+or in two steps:
+
+```bash
+asta-saw find-gef my_run                              # prints only the GEF path
+ST_INPUT_GEF="$(asta-saw find-gef my_run)" asta-run all
+```
+
+`asta-saw` exit codes: `1` setup problem (e.g. SAW not found), `2` no usable GEF found, `3` SAW itself failed. If several usable GEFs are found, `find-gef` lists them and asks you to pick one with `ST_INPUT_GEF`.
 
 ---
 
 ## Pipeline Steps
 
-### Step 1: Process FASTQ Files with SAW
+**Input:** a cell-bin `.gef` file in the folder you run from, either produced by SAW (above) or one you already have.
 
-**Input:** Raw FASTQ files from Stereo-seq sequencing
-
-**SAW Documentation:** https://github.com/STOmics/SAW
-
-#### 1.1 Prepare Input Files
-
-Your FASTQ files should follow Stereo-seq format ():
-```
-sample_R1.fastq.gz  # Read 1: Contains barcode + UMI
-sample_R2.fastq.gz  # Read 2: Contains cDNA sequence
-```
-
-#### 1.2 Create SAW Configuration File
-
-Create `config.json`:
-```json
-{
-  "input": {
-    "read1": "path/to/sample_R1.fastq.gz",
-    "read2": "path/to/sample_R2.fastq.gz",
-    "reference": "path/to/reference_genome"
-  },
-  "output": {
-    "outdir": "saw_output"
-  },
-  "chemistry": "Stereo-seq",
-  "threads": 8
-}
-```
-
-#### 1.3 Run SAW Pipeline
-
-```bash
-# Basic SAW command
-saw run \
-  --config config.json \
-  --outdir saw_output \
-  --threads 8
-
-# This will produce several files including:
-# - cellbin.gef 
-# - QC reports
-# - Expression matrices
-```
-
-**Processing Time:** 5+ hours depending on data size and computer
-
----
-
-### Step 2: Generate GEF File
-
-#### 2.1 Locate GEF File
-
-After SAW completes, find your GEF file:
-```bash
-# Default location
-ls saw_output/*.gef
-
-# Example output:
-# saw_output/B04372C211.adjusted.cellbin.gef
-```
-
-#### 2.2 Copy GEF File to Working Directory
-
-```bash
-# Copy to your analysis directory
-cp saw_output/*.gef ./input_data.gef
-```
-
-**Note:** If you already have a GEF file, you can skip Step 1 entirely and start here! 
-
-GEF file link for mouse ovarian tissue (public): https://drive.google.com/file/d/1CsbvW46f0W-zSEl-7YmpzNPjbIINF4qG/view
+Public sample GEF file for mouse ovarian tissue: https://drive.google.com/file/d/1CsbvW46f0W-zSEl-7YmpzNPjbIINF4qG/view
 
 ---
 

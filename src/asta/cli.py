@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 
-def _run_bundled_script(name):
+def _run_bundled_script(name, args=None, extra_env=None):
     """Hand off to one of our own bundled .sh files (shipped as package data,
     next to this file) via bash. Uses os.execvpe, which *replaces* this
     Python process with bash, so the script's exit code and Ctrl-C behave
@@ -21,8 +21,9 @@ def _run_bundled_script(name):
     is installed under, which matters under launchd/cron where PATH is
     minimal and no conda/venv is active."""
     script = Path(__file__).with_name(name)
-    env = dict(os.environ, ST_PYTHON=sys.executable)
-    os.execvpe("bash", ["bash", str(script), *sys.argv[1:]], env)
+    env = dict(os.environ, ST_PYTHON=sys.executable, **(extra_env or {}))
+    script_args = sys.argv[1:] if args is None else args
+    os.execvpe("bash", ["bash", str(script), *script_args], env)
 
 
 def run_pipeline():
