@@ -93,6 +93,16 @@ class TestCheck(SawTestCase):
         self.assertIn("install", r.stderr.lower())
         self.assertIn("SAW_BIN", r.stderr)
 
+    def test_check_with_bad_saw_bin_names_the_path(self):
+        r = self.asta_saw("check", SAW_BIN="/no/such/saw")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("$SAW_BIN is set to '/no/such/saw'", r.stderr)
+
+    def test_check_with_bad_saw_flag_names_the_path(self):
+        r = self.asta_saw("check", "--saw", "/no/such/saw")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("--saw is set to '/no/such/saw'", r.stderr)
+
     def test_help(self):
         for args in ([], ["--help"], ["count", "--help"]):
             r = self.asta_saw(*args)

@@ -105,9 +105,16 @@ def _saw_version(saw):
     return (r.stdout or r.stderr).strip()
 
 
-def _not_found_message():
+def _not_found_message(explicit=None):
+    # Same precedence as _find_saw: a set --saw / $SAW_BIN that fails is the
+    # real problem, so name it instead of implying nothing was set.
+    bad = [(label, val) for label, val in
+           (("--saw", explicit), ("$SAW_BIN", os.environ.get("SAW_BIN"))) if val]
+    hint = (f"  {bad[0][0]} is set to '{bad[0][1]}', which is not an executable file.\n"
+            if bad else "")
     return (
         "ERROR: SAW was not found.\n"
+        + hint +
         "  Looked at: --saw PATH, $SAW_BIN, then `saw` on PATH.\n"
         f"  Install instructions: {_readme_location()}\n"
         "  If SAW is installed somewhere not on PATH:\n"
@@ -153,7 +160,7 @@ def cmd_check(args):
 
     saw = _find_saw(explicit)
     if not saw:
-        _err(_not_found_message())
+        _err(_not_found_message(explicit))
         return 1
     version = _saw_version(saw)
     print(f"saw path : {saw}")
@@ -247,7 +254,7 @@ def cmd_count(args):
 
     saw = _find_saw(explicit)
     if not saw:
-        _err(_not_found_message())
+        _err(_not_found_message(explicit))
         return 1
 
     log_dir = Path.cwd() / "logs"
