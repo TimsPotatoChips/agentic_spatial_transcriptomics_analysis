@@ -31,7 +31,7 @@ Both run the same three pipeline stages in sequence:
 
 ### Prerequisites
 
-- Python 3.9+ with the package installed — see the main [README](README.md) (`pip install -e .` for development, or `conda install`/`pip install` once published), which makes the `asta-watch` command available on your `PATH` and pulls in `watchdog`, the only extra dependency it needs
+- Python 3.11+ with the package installed — see the main [README](README.md) (`pip install -e .` for development, or `conda install`/`pip install` once published), which makes the `asta-watch` command available on your `PATH` and pulls in `watchdog`, the only extra dependency it needs
 - Optional: an OpenAI API key (for the AI agent's LLM-based hypothesis generation — falls back to rule-based hypotheses without one)
 - Optional: a Gmail account (for email notifications — desktop notifications and log files work regardless)
 
@@ -77,7 +77,7 @@ If you're on macOS and want the extra on-demand triggering channels (browser das
 ### Prerequisites
 
 - macOS (the auto-run watcher uses macOS launchd)
-- Python 3.9+ (see the main [README](README.md) for the recommended conda setup via `environment.yml`)
+- Python 3.11+ (see the main [README](README.md) for the recommended conda setup via `environment.yml`)
 - Node.js 22+
 - An Anthropic or OpenAI API key
 - A Gmail account (for email notifications)

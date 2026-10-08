@@ -25,10 +25,10 @@ FASTQ Files → SAW Processing → GEF File → Analysis → Results
 
 ```bash
 git clone <this-repo-url>
-cd "Spatial Transcriptomics Analysis"
+cd agentic_spatial_transcriptomics_analysis
 ```
 
-All five analysis scripts (`baseline.py`, `ensemble_clustering.py`, `annotator.py`, `ai_agent.py`, `ovarian_knowledge_base.py`) live at the repository root — no additional setup needed to place them.
+The code is an installable Python package named `asta`, under `src/asta/`. Installing it (step 4) gives you a set of `asta-*` commands that you can run from **any folder**, so you never need to run scripts out of the repository folder.
 
 ### 2. Install Conda (skip if you already have it)
 
@@ -55,12 +55,22 @@ conda env create -f environment.yml
 conda activate spatial-transcriptomics
 ```
 
-This creates an isolated environment named `spatial-transcriptomics` with Python 3.11 and every dependency pinned to the exact tested version.
+This creates an isolated environment named `spatial-transcriptomics` with Python 3.11 and every dependency pinned to the exact tested version. **Use `environment.yml` if you want to reproduce the paper's numbers exactly.** The package itself (next step) only asks for minimum versions, so installing it on its own can pick up newer libraries and give slightly different results.
 
-Then install the package itself (registers the scripts as importable modules, so they can also be run as `python -m baseline ...`, etc.):
+### 4. Install the Package
+
+From the repository folder, with the environment activated:
 
 ```bash
 pip install .
+```
+
+This installs the `asta` package and the `asta-*` commands listed below into your environment. Dependencies are already in place from `environment.yml`.
+
+If you plan to edit the code, use an editable install instead, so changes take effect without reinstalling:
+
+```bash
+pip install -e .
 ```
 
 <details>
@@ -73,20 +83,54 @@ source .venv/bin/activate  # Linux/Mac
 .venv\Scripts\activate     # Windows
 
 pip install -r requirements.txt
+pip install .
 ```
 
 Note: this does not manage non-Python system dependencies, so you may need HDF5 installed separately depending on your OS.
 </details>
 
-### 4. Verify Installation
+### 5. Verify Installation
 
 ```bash
-# Check Python version (3.9+ required; environment.yml installs 3.11)
+# Check Python version (3.11+ required; environment.yml installs 3.11)
 python --version
 
-# Check package installations
-python -c "import numpy, pandas, scipy, sklearn, h5py, umap; print('All packages installed!')"
+# Check that the commands are installed (run this from any folder)
+asta-run --help
+asta-ensemble --help
 ```
+
+### The `asta-*` commands
+
+| Command | What it does |
+|---|---|
+| `asta-baseline` | Baseline clustering (optional, for comparison) |
+| `asta-ensemble` | Stage 1: ensemble clustering |
+| `asta-annotate` | Stage 2: biological annotation |
+| `asta-agent` | Stage 3: autonomous AI agent (needs `OPENAI_API_KEY` for the LLM part) |
+| `asta-run [all\|ensemble\|annotator\|agent]` | Runs the stages in order, with logging and a notification when done (macOS/Linux) |
+| `asta-watch [--path DIR] [--once]` | Watches a folder for new `.gef` files and runs the pipeline on them (macOS, Linux, Windows) |
+| `asta-watch-launchd` | macOS watcher used by the OpenClaw/launchd workflow |
+| `asta-notify "subject" "body"` | Email/desktop notification (used by the watchers) |
+| `asta-saw check \| count … \| find-gef DIR` | Optional bridge to STOmics SAW, see below |
+
+Every command except `asta-notify` accepts `--help`. (`asta-notify` treats its first argument as the message subject and then waits for the body on standard input, so `asta-notify --help` appears to hang. Press Ctrl-C to cancel.)
+
+### Where your data lives
+
+The commands run on **your data folder**, which is the folder you run them from (or `--path DIR` for `asta-watch`, or `$ST_DATA_DIR` for `asta-run` and `asta-watch-launchd`). It is never the folder the package is installed in. In that folder:
+
+- your `.gef` file is picked up automatically (or pass `--input` to a single stage, or set `ST_INPUT_GEF` for `asta-run`),
+- `output/` and `logs/` are created there,
+- an optional `.env` file is read from there (for `OPENAI_API_KEY`, `GMAIL_*` and the `ST_*` settings). Never commit this file. `asta-run` and `asta-watch-launchd` load it as a shell script (`source .env`), so values in `.env` override variables already set in your shell. `asta-watch` reads only plain `KEY=VALUE` lines, and there variables already set in your shell take priority over `.env`.
+
+```bash
+mkdir my_analysis && cd my_analysis
+cp /path/to/your.gef .
+asta-run all
+```
+
+Templates and docs for running the watcher as a background service (`deploy/`, `AI_AGENT_DEPLOY.md`) are in the repository.
 
 ### (Optional) Processing raw FASTQ files with SAW
 
@@ -149,7 +193,7 @@ Public sample GEF file for mouse ovarian tissue: https://drive.google.com/file/d
 
 ---
 
-### Step 3: Run Spatial Transcriptomics Analysis
+### Run the analysis
 
 Every script accepts `--input` and `--output` flags, so no source-code editing is required to point them at your own GEF file. There's no hardcoded filename to match — if you omit `--input`, each script resolves it in this order:
 
@@ -157,20 +201,20 @@ Every script accepts `--input` and `--output` flags, so no source-code editing i
 2. Otherwise, if there's exactly one `.gef` file in the current directory, that file is used automatically.
 3. Otherwise (zero, or more than one, `.gef` file present with no explicit input given), the script exits with a clear error telling you to pass `--input` explicitly.
 
-So for the common case — one dataset per folder — you usually don't need to pass `--input` at all. Run `python <script>.py --help` for the full list of options on any script.
+So for the common case — one dataset per folder — you usually don't need to pass `--input` at all. Run `asta-<command> --help` (e.g. `asta-ensemble --help`) for the full list of options on any command.
 
-**Output goes to `output/<run timestamp>/<stage>/` by default** (e.g. `output/20260727_140512/ensemble/`) if you don't pass `--output` — so re-running the pipeline never silently overwrites a previous run's results, and everything one run produces lives together under a single timestamped folder. All stages run together via `run_pipeline.sh` or `watch_runner.py` share one timestamp, so a full run's results all land under `output/<run timestamp>/ensemble/`, `output/<run timestamp>/annotator/`, and `output/<run timestamp>/agent/`. (`baseline.py` is a standalone script outside the pipeline chain and still writes to its own `output/baseline/<run timestamp>/`.) Override with `--output some/path` (or `$ST_OUTPUT_DIR`) if you want a fixed location instead.
+**Output goes to `output/<run timestamp>/<stage>/` by default** (e.g. `output/20260727_140512/ensemble/`) if you don't pass `--output` — so re-running the pipeline never silently overwrites a previous run's results, and everything one run produces lives together under a single timestamped folder. All stages run together via `asta-run` or `asta-watch` share one timestamp, so a full run's results all land under `output/<run timestamp>/ensemble/`, `output/<run timestamp>/annotator/`, and `output/<run timestamp>/agent/`. (`asta-baseline` is a standalone command outside the pipeline chain and still writes to its own `output/baseline/<run timestamp>/`.) Override with `--output some/path` (or `$ST_OUTPUT_DIR`) if you want a fixed location instead.
 
-All commands below assume your GEF file is at `./input_data.gef` and that you've activated the conda environment from Step 2.
+All commands below assume you are in your data folder, that your GEF file is at `./input_data.gef`, and that you've activated the environment where you installed the package.
 
-**Shortcut:** rather than running each script individually, `./run_pipeline.sh` chains 3.2-3.4 (ensemble → annotation → agent) automatically in the required order. For fully automatic, ongoing analysis — drop a new `.gef` file into the project folder and it runs and notifies you when done, no manual invocation needed — run `python watch_runner.py` (cross-platform: macOS, Linux, Windows) and leave it running; see [AI_AGENT_DEPLOY.md](AI_AGENT_DEPLOY.md) for full setup, including running it as a persistent background service. The individual commands below are for running or debugging a single stage on its own.
+**Shortcut:** rather than running each command individually, `asta-run` chains 3.2-3.4 (ensemble → annotation → agent) automatically in the required order. For fully automatic, ongoing analysis — drop a new `.gef` file into the data folder and it runs and notifies you when done, no manual invocation needed — run `asta-watch` (cross-platform: macOS, Linux, Windows) and leave it running; add `--path DIR` to watch a folder other than the current one. See [AI_AGENT_DEPLOY.md](AI_AGENT_DEPLOY.md) for full setup, including running it as a persistent background service. The individual commands below are for running or debugging a single stage on its own.
 
 #### 3.1 Run Baseline Clustering (optional, for comparison)
 
-`baseline.py` is a standalone reference clustering method, not part of the required pipeline chain — its results are used only to benchmark how much the ensemble method (3.2) improves on a simpler baseline (see the Expected Results table below). It's not required to produce annotation or agent results.
+`asta-baseline` is a standalone reference clustering method, not part of the required pipeline chain — its results are used only to benchmark how much the ensemble method (3.2) improves on a simpler baseline (see the Expected Results table below). It's not required to produce annotation or agent results.
 
 ```bash
-python baseline.py --input input_data.gef
+asta-baseline --input input_data.gef
 
 # Output: output/baseline/<run timestamp>/
 # - recursive clustering results (JSON) and summary report
@@ -181,7 +225,7 @@ python baseline.py --input input_data.gef
 #### 3.2 Run Ensemble Clustering
 
 ```bash
-python ensemble_clustering.py --input input_data.gef
+asta-ensemble --input input_data.gef
 
 # Output: output/<run timestamp>/ensemble/
 # - ensemble_results.json
@@ -194,7 +238,7 @@ python ensemble_clustering.py --input input_data.gef
 #### 3.3 Run Knowledge-Based Biological Annotation
 
 ```bash
-python annotator.py --input input_data.gef
+asta-annotate --input input_data.gef
 
 # Output: output/<run timestamp>/annotator/
 # - cell_type_assignments.csv
@@ -213,10 +257,10 @@ The AI agent generates and tests its own biological hypotheses using an LLM. Thi
 ```bash
 # Option A: environment variable
 export OPENAI_API_KEY="sk-..."
-python ai_agent.py --input input_data.gef
+asta-agent --input input_data.gef
 
 # Option B: command-line flag
-python ai_agent.py --input input_data.gef --api-key "sk-..."
+asta-agent --input input_data.gef --api-key "sk-..."
 
 # Output: output/<run timestamp>/agent/
 # - autonomous_discoveries.json
@@ -233,29 +277,35 @@ For fully automated, ongoing deployment of the AI agent (e.g. auto-run on new da
 ## Project Structure
 
 ```
-Spatial Transcriptomics Analysis/
+agentic_spatial_transcriptomics_analysis/
 ├── README.md                          # This file
-├── environment.yml                    # Conda environment spec (recommended)
+├── pyproject.toml                     # Package metadata and the asta-* commands
+├── environment.yml                    # Conda environment spec (exact pins, recommended)
 ├── requirements.txt                   # Pinned pip dependencies (fallback)
 ├── LICENSE
 │
-├── baseline.py                        # Step 3.1
-├── ensemble_clustering.py             # Step 3.2
-├── annotator.py                       # Step 3.3
-├── ovarian_knowledge_base.py          # Marker/pathway knowledge base (imported by annotator.py)
-├── ai_agent.py                        # Step 3.4 (agentic analysis)
-│
-├── run_pipeline.sh                    # Shortcut: runs 3.2-3.4 in order (macOS/Linux)
-├── watch_runner.py                    # Cross-platform automatic watcher (see AI_AGENT_DEPLOY.md)
-├── notify.py                          # Desktop/email notifications (used by the watchers)
+├── src/asta/                          # The installable package
+│   ├── baseline.py                    # asta-baseline  (Step 3.1)
+│   ├── ensemble_clustering.py         # asta-ensemble  (Step 3.2)
+│   ├── annotator.py                   # asta-annotate  (Step 3.3)
+│   ├── ovarian_knowledge_base.py      # Marker/pathway knowledge base (imported by annotator.py)
+│   ├── ai_agent.py                    # asta-agent     (Step 3.4, agentic analysis)
+│   ├── run_pipeline.sh                # asta-run: runs 3.2-3.4 in order (macOS/Linux)
+│   ├── watch_runner.py                # asta-watch: cross-platform automatic watcher
+│   ├── watch_runner.sh                # asta-watch-launchd: macOS/OpenClaw watcher
+│   ├── notify.py                      # asta-notify: desktop/email notifications
+│   ├── saw.py                         # asta-saw: bridge to an installed SAW
+│   └── cli.py                         # Entry points for the commands above
 ├── deploy/                            # Background-service templates (launchd, systemd)
+├── tests/                             # Tests (need no data, network or API key)
 │
-├── input_data.gef                     # Your GEF file (not included; see Step 2 above)
-├── output/                            # All results, grouped by stage then run
-│   ├── baseline/<run timestamp>/
-│   ├── ensemble/<run timestamp>/
-│   ├── annotator/<run timestamp>/
-│   └── agent/<run timestamp>/
+Your data folder (any folder you run the commands from):
+├── input_data.gef                     # Your GEF file (not included; see "Pipeline Steps" above)
+├── .env                               # Optional: OPENAI_API_KEY etc. (never commit)
+├── logs/                              # Run logs
+├── output/                            # All results
+│   ├── <run timestamp>/{ensemble,annotator,agent}/
+│   └── baseline/<run timestamp>/
 ```
 
 ---
@@ -279,7 +329,7 @@ seaborn==0.13.2
 umap-learn==0.5.12
 ```
 
-Requires Python 3.9+ (numpy 2.x requirement); `environment.yml` installs 3.11.
+Requires Python 3.11+; `environment.yml` installs 3.11. The package itself (`pip install .`) declares only minimum versions of these libraries, so use `environment.yml` when you need to reproduce the published numbers exactly.
 
 ---
 
@@ -354,7 +404,7 @@ In short: the **Hypothesis Generator** proposes the "what if," the **Analysis Pl
 
 Spatial Transcriptomics Analysis Enhanced Framework - released under the [MIT License](LICENSE). Freely usable, modifiable, and redistributable, including for commercial purposes, provided the copyright notice is retained.
 
-Note: this license covers the analysis scripts in this repository only. SAW (used for FASTQ processing, Step 1) is a separate third-party tool — check the [STOmics/SAW repository](https://github.com/STOmics/SAW) for its license terms.
+Note: this license covers the analysis scripts in this repository only. SAW (used for FASTQ processing, see "Processing raw FASTQ files with SAW" above) is a separate third-party tool — check the [STOmics/SAW repository](https://github.com/STOmics/SAW) for its license terms.
 
 ---
 
