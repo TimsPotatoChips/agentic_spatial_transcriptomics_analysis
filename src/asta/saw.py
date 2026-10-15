@@ -18,10 +18,11 @@ import sys
 from pathlib import Path
 
 # Keep in sync with the README heading "(Optional) Processing raw FASTQ files
-# with SAW". Which repo hosts the release is still open (plan D2).
+# with SAW". Pinned to the release tag: the fork's default branch may not have
+# that section yet.
 README_URL = (
-    "https://github.com/TimsPotatoChips/agentic_spatial_transcriptomics_analysis"
-    "#optional-processing-raw-fastq-files-with-saw"
+    "https://github.com/pratham-rajesh/agentic_spatial_transcriptomics_analysis"
+    "/blob/v1.0.0/README.md#optional-processing-raw-fastq-files-with-saw"
 )
 
 # SAW's documented minimums (warnings only; SAW decides for itself).

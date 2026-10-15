@@ -21,6 +21,8 @@ FASTQ Files → SAW Processing → GEF File → Analysis → Results
 
 ## Installation
 
+**Hardware.** On the sample dataset (24,930 cells), `asta-run all` peaked at ~10 GB RAM and took ~23 min on a Linux x86_64 server; `asta-baseline` peaked at ~13 GB. Plan for 16 GB+ RAM.
+
 ### 1. Clone This Repository
 
 ```bash
@@ -110,7 +112,7 @@ asta-ensemble --help
 | `asta-agent` | Stage 3: autonomous AI agent (needs `OPENAI_API_KEY` for the LLM part) |
 | `asta-run [all\|ensemble\|annotator\|agent]` | Runs the stages in order, with logging and a notification when done (macOS/Linux) |
 | `asta-watch [--path DIR] [--once]` | Watches a folder for new `.gef` files and runs the pipeline on them (macOS, Linux, Windows) |
-| `asta-watch-launchd` | macOS watcher used by the OpenClaw/launchd workflow |
+| `asta-watch-launchd` | macOS-only watcher used by the OpenClaw/launchd workflow (exits with an error on Linux) |
 | `asta-notify "subject" "body"` | Email/desktop notification (used by the watchers) |
 | `asta-saw check \| count … \| find-gef DIR` | Optional bridge to STOmics SAW, see below |
 
@@ -123,6 +125,7 @@ The commands run on **your data folder**, which is the folder you run them from 
 - your `.gef` file is picked up automatically (or pass `--input` to a single stage, or set `ST_INPUT_GEF` for `asta-run`),
 - `output/` and `logs/` are created there,
 - an optional `.env` file is read from there (for `OPENAI_API_KEY`, `GMAIL_*` and the `ST_*` settings). Never commit this file. `asta-run` and `asta-watch-launchd` load it as a shell script (`source .env`), so values in `.env` override variables already set in your shell. `asta-watch` reads only plain `KEY=VALUE` lines, and there variables already set in your shell take priority over `.env`.
+- `asta-watch` keeps its own record of processed files in `~/.sttx-watch/`
 
 ```bash
 mkdir my_analysis && cd my_analysis

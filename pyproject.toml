@@ -11,12 +11,16 @@ license = { file = "LICENSE" }
 requires-python = ">=3.11"
 authors = [
   { name = "Maiqi Zhang" },
+  { name = "Minjun Roe" },
+  { name = "Chris Pollett" },
+  { name = "William B. Andreopoulos" },
+  { name = "Pratham Rajesh" },
 ]
 dependencies = [
   "h5py>=3.14.0",
   "matplotlib>=3.9.4",
   "numpy>=2.0.2",
-  "openai>=2.43.0",
+  "openai>=2.43.0,<3",
   "pandas>=2.3.3",
   "scikit-learn>=1.6.1",
   "scipy>=1.13.1",
@@ -26,7 +30,8 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/wandreopoulos/agentic_spatial_transcriptomics_analysis"
+Repository = "https://github.com/pratham-rajesh/agentic_spatial_transcriptomics_analysis"
+Paper = "https://doi.org/10.64898/2026.08.10.743848"
 
 [project.scripts]
 asta-baseline = "asta.cli:baseline"

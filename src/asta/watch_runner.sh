@@ -30,6 +30,11 @@ EOF
   exit 0
 fi
 
+if [[ "$(uname -s)" != "Darwin" ]]; then
+  echo "asta-watch-launchd is macOS-only (BSD stat, ~/Library/Logs). On Linux use asta-watch; see share/asta/deploy/sttx-watch.service.template." >&2
+  exit 1
+fi
+
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # our own install location, to find run_pipeline.sh next to us
