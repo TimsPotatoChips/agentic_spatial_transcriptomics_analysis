@@ -1,5 +1,5 @@
 {% set name = "spatial-transcriptomics-analysis" %}
-{% set version = "1.0.0" %}
+{% set version = "1.0.1" %}
 
 package:
   name: {{ name|lower }}
@@ -42,7 +42,7 @@ requirements:
     - h5py >=3.14.0
     - matplotlib >=3.9.4
     - numpy >=2.0.2
-    - openai >=2.43.0,<3
+    - openai >=2.43.0,<4
     - pandas >=2.3.3
     - scikit-learn >=1.6.1
     - scipy >=1.13.1
@@ -76,8 +76,8 @@ test:
     - pip check
 
 about:
-  home: https://github.com/pratham-rajesh/agentic_spatial_transcriptomics_analysis
-  dev_url: https://github.com/pratham-rajesh/agentic_spatial_transcriptomics_analysis
+  home: https://github.com/wandreopoulos/agentic_spatial_transcriptomics_analysis
+  dev_url: https://github.com/wandreopoulos/agentic_spatial_transcriptomics_analysis
   license: MIT
   license_file: LICENSE
   summary: Enhanced autonomous spatial transcriptomics analysis pipeline for Stereo-seq data
